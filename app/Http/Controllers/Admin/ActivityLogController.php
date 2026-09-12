@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Spatie\Activitylog\Models\Activity;
 
@@ -26,8 +27,22 @@ class ActivityLogController extends Controller
         }
 
         $activities = $query->latest()->paginate(15)->withQueryString();
-        $users = \App\Models\User::where('role', '!=', 'admin')->orderBy('name')->get();
+        $users = User::where('role', '!=', 'admin')->orderBy('name')->get();
 
-        return view('admin.activity-logs.index', compact('activities', 'users'));
+        $statsQuery = Activity::query();
+        if ($request->filled('search')) {
+            $statsQuery->where('description', 'like', "%{$request->search}%");
+        }
+        if ($request->filled('user')) {
+            $statsQuery->where('causer_id', $request->user);
+        }
+
+        $stats = [
+            'total' => (clone $statsQuery)->count(),
+            'today' => (clone $statsQuery)->whereDate('created_at', now())->count(),
+            'active_users' => Activity::where('created_at', '>=', now()->subDays(7))->distinct('causer_id')->count('causer_id'),
+        ];
+
+        return view('admin.activity-logs.index', compact('activities', 'users', 'stats'));
     }
 }

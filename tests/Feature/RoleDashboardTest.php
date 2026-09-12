@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Department;
+use App\Models\Task;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -21,6 +22,7 @@ class RoleDashboardTest extends TestCase
         $dept = Department::create(['name' => 'Engineering']);
         $manager = User::factory()->manager()->create(['email_verified_at' => now(), 'department_id' => $dept->id]);
         User::factory()->employee()->create(['department_id' => $dept->id]);
+
         return $manager;
     }
 
@@ -107,5 +109,34 @@ class RoleDashboardTest extends TestCase
     public function test_employee_notifications_loads(): void
     {
         $this->actingAs($this->employee())->get('/employee/notifications')->assertOk();
+    }
+
+    public function test_employee_without_review_tasks_sees_no_review_navigation(): void
+    {
+        $employee = $this->employee();
+
+        $this->actingAs($employee)
+            ->get('/employee/dashboard')
+            ->assertOk()
+            ->assertDontSee('Review Tasks')
+            ->assertDontSee('Tasks to Review')
+            ->assertDontSee('Nothing to review.');
+    }
+
+    public function test_employee_with_pending_review_sees_review_navigation(): void
+    {
+        $employee = $this->employee();
+        $creator = $this->admin();
+
+        Task::factory()->underReview()->create([
+            'created_by' => $creator->id,
+            'reviewer_id' => $employee->id,
+        ]);
+
+        $this->actingAs($employee)
+            ->get('/employee/dashboard')
+            ->assertOk()
+            ->assertSee('Review Tasks')
+            ->assertSee('Tasks to Review');
     }
 }

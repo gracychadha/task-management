@@ -39,9 +39,16 @@
                             <div class="mt-1 space-y-1">
                                 @foreach($dayTasks->take(3) as $task)
                                     <a href="{{ route('manager.team-tasks.show', $task) }}" class="block text-[10px] px-1 py-0.5 rounded truncate
-                                        @if($task->status === 'done') bg-green-100 text-green-700
-                                        @elseif($task->status === 'in_progress') bg-blue-100 text-blue-700
-                                        @else bg-gray-100 text-gray-700 @endif">
+                                        @switch($task->status)
+                                            @case('new') bg-gray-100 text-gray-800 @break
+                                            @case('in_progress') bg-blue-100 text-blue-700 @break
+                                            @case('under_review') bg-yellow-100 text-yellow-700 @break
+                                            @case('changes_requested') bg-red-100 text-red-700 @break
+                                            @case('on_hold') bg-purple-100 text-purple-700 @break
+                                            @case('completed') bg-green-100 text-green-700 @break
+                                            @case('cancelled') bg-zinc-100 text-zinc-700 @break
+                                            @default bg-gray-100 text-gray-700
+                                        @endswitch">
                                         {{ $task->title }}
                                     </a>
                                 @endforeach

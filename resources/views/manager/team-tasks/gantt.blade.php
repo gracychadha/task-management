@@ -45,10 +45,16 @@
                                 <div class="w-48 shrink-0 text-xs text-gray-700 truncate pr-2">{{ $task->title }}</div>
                                 <div class="flex-1 relative h-6">
                                     <div class="absolute h-4 top-1 rounded cursor-pointer
-                                        @if($task->status === 'done') bg-green-400
-                                        @elseif($task->status === 'in_progress') bg-blue-400
-                                        @elseif($task->status === 'review') bg-yellow-400
-                                        @else bg-gray-400 @endif"
+                                        @switch($task->status)
+                                            @case('new') bg-gray-400 @break
+                                            @case('in_progress') bg-blue-400 @break
+                                            @case('under_review') bg-yellow-400 @break
+                                            @case('changes_requested') bg-red-400 @break
+                                            @case('on_hold') bg-purple-400 @break
+                                            @case('completed') bg-green-400 @break
+                                            @case('cancelled') bg-zinc-400 @break
+                                            @default bg-gray-400
+                                        @endswitch"
                                         style="left: {{ $leftPct }}%; width: {{ $widthPct }}%;"
                                         title="{{ $task->title }}">
                                     </div>

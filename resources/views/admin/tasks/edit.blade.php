@@ -53,6 +53,27 @@
                             </div>
                         </div>
 
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <x-input-label for="department_id" value="Department (optional)" />
+                                <select id="department_id" name="department_id" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 block w-full">
+                                    <option value="">— None —</option>
+                                    @foreach($departments as $department)
+                                        <option value="{{ $department->id }}" {{ old('department_id', $task->department_id) == $department->id ? 'selected' : '' }}>{{ $department->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <x-input-label for="reviewer_id" value="Reviewer (optional)" />
+                                <select id="reviewer_id" name="reviewer_id" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 block w-full">
+                                    <option value="">— Unassigned —</option>
+                                    @foreach($reviewers as $reviewer)
+                                        <option value="{{ $reviewer->id }}" {{ old('reviewer_id', $task->reviewer_id) == $reviewer->id ? 'selected' : '' }}>{{ $reviewer->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+
                         <div>
                             <x-input-label for="assign_department" value="Assign to entire department (optional)" />
                             <select id="assign_department" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 block w-full">

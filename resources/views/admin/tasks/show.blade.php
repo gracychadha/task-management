@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex justify-between items-center">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">{{ $task->title }}</h2>
+            <h2 class="font-semibold text-xl text-gray-800 leading-tight">{{ $task->code() }} &mdash; {{ $task->title }}</h2>
             <div class="flex gap-2">
                 <a href="{{ route('admin.tasks.edit', $task) }}" class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">Edit</a>
                 <form method="POST" action="{{ route('admin.tasks.destroy', $task) }}" onsubmit="return confirm('Delete this task?')">
@@ -17,16 +17,12 @@
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Main Content -->
                 <div class="lg:col-span-2 space-y-6">
+                    @include('partials.task-progress')
+
                     <!-- Task Details -->
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
                         <div class="flex items-center gap-2 mb-4">
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                @if($task->status === 'done') bg-green-100 text-green-800
-                                @elseif($task->status === 'in_progress') bg-blue-100 text-blue-800
-                                @elseif($task->status === 'review') bg-yellow-100 text-yellow-800
-                                @else bg-gray-100 text-gray-800 @endif">
-                                {{ $task->getStatusLabel() }}
-                            </span>
+                            @include('partials.status-badge', ['label' => $task->getStatusLabel(), 'color' => $task->getStatusColor()])
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
                                 @if($task->priority === 'urgent') bg-red-100 text-red-800
                                 @elseif($task->priority === 'high') bg-orange-100 text-orange-800
@@ -34,6 +30,11 @@
                                 @else bg-gray-100 text-gray-800 @endif">
                                 {{ $task->getPriorityLabel() }}
                             </span>
+                            @if($task->isCompleted())
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">Completed {{ $task->completed_at?->format('M d, Y') }}</span>
+                            @elseif($task->isOverdue())
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Overdue</span>
+                            @endif
                         </div>
 
                         @if($task->description)
@@ -47,6 +48,9 @@
                                 @endforeach
                             </div>
                         @endif
+
+                        <!-- Review Workflow -->
+                        @include('partials.review-workflow', ['reviewerCandidates' => $reviewerCandidates ?? collect()])
 
                         <!-- Comments -->
                         <div class="border-t border-gray-200 pt-4 mt-4">
@@ -77,6 +81,10 @@
                             </form>
                         </div>
                     </div>
+
+                    @include('partials.review-history')
+
+                    @include('partials.activity-timeline')
                 </div>
 
                 <!-- Sidebar -->
@@ -100,12 +108,20 @@
                                 <span class="text-gray-900">{{ $task->creator?->name ?? '-' }}</span>
                             </div>
                             <div class="flex justify-between">
+                                <span class="text-gray-500">Reviewer</span>
+                                <span class="text-gray-900">{{ $task->reviewer?->name ?? '-' }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">Department</span>
+                                <span class="text-gray-900">{{ $task->department?->name ?? '-' }}</span>
+                            </div>
+                            <div class="flex justify-between">
                                 <span class="text-gray-500">Start Date</span>
                                 <span class="text-gray-900">{{ $task->start_date?->format('M d, Y') ?? '-' }}</span>
                             </div>
                             <div class="flex justify-between">
                                 <span class="text-gray-500">Due Date</span>
-                                <span class="{{ $task->isOverdue() ? 'text-red-600 font-medium' : 'text-gray-900' }}">{{ $task->due_date?->format('M d, Y') ?? '-' }}</span>
+                                <span class="{{ $task->isOverdue() && ! $task->isCompleted() ? 'text-red-600 font-medium' : 'text-gray-900' }}">{{ $task->due_date?->format('M d, Y') ?? '-' }}</span>
                             </div>
                             <div class="flex justify-between">
                                 <span class="text-gray-500">Est. Hours</span>
@@ -114,6 +130,28 @@
                             <div class="flex justify-between">
                                 <span class="text-gray-500">Actual Hours</span>
                                 <span class="text-gray-900">{{ $task->actual_hours ?? '-' }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
+                        <h4 class="text-sm font-medium text-gray-900 mb-3">Task Stats</h4>
+                        <div class="grid grid-cols-2 gap-3 text-sm">
+                            <div class="p-3 bg-gray-50 rounded-md text-center">
+                                <div class="text-xl font-semibold text-gray-900">{{ $task->updates_count }}</div>
+                                <div class="text-xs text-gray-500">Updates</div>
+                            </div>
+                            <div class="p-3 bg-gray-50 rounded-md text-center">
+                                <div class="text-xl font-semibold text-gray-900">{{ $task->reviewCyclesCount() }}</div>
+                                <div class="text-xs text-gray-500">Review Cycles</div>
+                            </div>
+                            <div class="p-3 bg-gray-50 rounded-md text-center">
+                                <div class="text-xl font-semibold text-gray-900">{{ $task->changesRequestedCount() }}</div>
+                                <div class="text-xs text-gray-500">Changes Requested</div>
+                            </div>
+                            <div class="p-3 bg-gray-50 rounded-md text-center">
+                                <div class="text-xl font-semibold text-gray-900">{{ $task->resubmissions() }}</div>
+                                <div class="text-xs text-gray-500">Resubmissions</div>
                             </div>
                         </div>
                     </div>
@@ -147,12 +185,7 @@
                             <div class="space-y-2">
                                 @foreach($task->subtasks as $sub)
                                     <a href="{{ route('admin.tasks.show', $sub) }}" class="flex items-center gap-2 py-2 border-b border-gray-100 last:border-0 hover:text-indigo-600">
-                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium
-                                            @if($sub->status === 'done') bg-green-100 text-green-700
-                                            @elseif($sub->status === 'in_progress') bg-blue-100 text-blue-700
-                                            @else bg-gray-100 text-gray-600 @endif">
-                                            {{ $sub->getStatusLabel() }}
-                                        </span>
+                                        @include('partials.status-badge', ['label' => $sub->getStatusLabel(), 'color' => $sub->getStatusColor()])
                                         <span class="text-sm text-gray-900">{{ $sub->title }}</span>
                                     </a>
                                 @endforeach
@@ -163,24 +196,4 @@
             </div>
         </div>
     </div>
-
-    @push('scripts')
-    <script>
-        // Make status clickable
-        document.querySelectorAll('[data-status-change]').forEach(el => {
-            el.addEventListener('click', () => {
-                const status = el.dataset.statusChange;
-                fetch('{{ route("admin.tasks.update-status", $task) }}', {
-                    method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json',
-                    },
-                    body: JSON.stringify({ status }),
-                }).then(() => location.reload());
-            });
-        });
-    </script>
-    @endpush
 </x-app-layout>

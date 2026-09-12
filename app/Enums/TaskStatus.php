@@ -4,28 +4,37 @@ namespace App\Enums;
 
 enum TaskStatus: string
 {
-    case Todo = 'todo';
+    case New = 'new';
     case InProgress = 'in_progress';
-    case Review = 'review';
-    case Done = 'done';
+    case UnderReview = 'under_review';
+    case ChangesRequested = 'changes_requested';
+    case Completed = 'completed';
+    case OnHold = 'on_hold';
+    case Cancelled = 'cancelled';
 
     public function label(): string
     {
         return match ($this) {
-            self::Todo => 'To Do',
+            self::New => 'New',
             self::InProgress => 'In Progress',
-            self::Review => 'Review',
-            self::Done => 'Done',
+            self::UnderReview => 'Under Review',
+            self::ChangesRequested => 'Changes Requested',
+            self::Completed => 'Completed',
+            self::OnHold => 'On Hold',
+            self::Cancelled => 'Cancelled',
         };
     }
 
     public function color(): string
     {
         return match ($this) {
-            self::Todo => 'gray',
+            self::New => 'gray',
             self::InProgress => 'blue',
-            self::Review => 'yellow',
-            self::Done => 'green',
+            self::UnderReview => 'yellow',
+            self::ChangesRequested => 'red',
+            self::Completed => 'green',
+            self::OnHold => 'purple',
+            self::Cancelled => 'zinc',
         };
     }
 

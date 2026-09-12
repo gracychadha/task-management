@@ -40,7 +40,7 @@ class EmployeeController extends Controller
         $employees = $query->with('department')
             ->withCount(['assignedTasks as tasks_count'])
             ->withCount(['assignedTasks as tasks_count_done' => function ($q) {
-                $q->where('status', 'done');
+                $q->where('status', 'completed');
             }])
             ->latest()
             ->paginate(12)
@@ -48,7 +48,31 @@ class EmployeeController extends Controller
 
         $departments = Department::where('is_active', true)->orderBy('name')->get();
 
-        return view('admin.employees.index', compact('employees', 'departments'));
+        $statsQuery = User::where('role', '!=', UserRole::Admin->value);
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $statsQuery->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('position', 'like', "%{$search}%")
+                    ->orWhereHas('department', fn ($q2) => $q2->where('name', 'like', "%{$search}%"));
+            });
+        }
+        if ($request->filled('role')) {
+            $statsQuery->where('role', $request->role);
+        }
+        if ($request->filled('department_id')) {
+            $statsQuery->where('department_id', $request->department_id);
+        }
+
+        $stats = [
+            'total' => (clone $statsQuery)->count(),
+            'active' => (clone $statsQuery)->where('is_active', true)->count(),
+            'managers' => (clone $statsQuery)->where('role', 'manager')->count(),
+            'employees' => (clone $statsQuery)->where('role', 'employee')->count(),
+        ];
+
+        return view('admin.employees.index', compact('employees', 'departments', 'stats'));
     }
 
     public function create()
@@ -102,11 +126,18 @@ class EmployeeController extends Controller
             },
         ]);
 
+        $tasks = Task::whereHas('assignees', fn ($q) => $q->where('users.id', $employee->id))->get();
+
         $stats = [
-            'total_tasks' => Task::whereHas('assignees', fn ($q) => $q->where('users.id', $employee->id))->count(),
-            'completed_tasks' => Task::whereHas('assignees', fn ($q) => $q->where('users.id', $employee->id))->where('status', 'done')->count(),
-            'in_progress_tasks' => Task::whereHas('assignees', fn ($q) => $q->where('users.id', $employee->id))->where('status', 'in_progress')->count(),
-            'overdue_tasks' => Task::whereHas('assignees', fn ($q) => $q->where('users.id', $employee->id))->overdue()->count(),
+            'total_tasks' => $tasks->count(),
+            'completed_tasks' => $tasks->where('status', 'completed')->count(),
+            'in_progress_tasks' => $tasks->where('status', 'in_progress')->count(),
+            'under_review_tasks' => $tasks->where('status', 'under_review')->count(),
+            'changes_requested_tasks' => $tasks->where('status', 'changes_requested')->count(),
+            'overdue_tasks' => $tasks->filter(fn (Task $t) => $t->isOverdue())->count(),
+            'updates' => $tasks->sum('updates_count'),
+            'review_cycles' => $tasks->sum->reviewCyclesCount(),
+            'resubmissions' => $tasks->sum->resubmissions(),
         ];
 
         $completionRate = $stats['total_tasks'] > 0
@@ -129,7 +160,7 @@ class EmployeeController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $employee->id,
+            'email' => 'required|string|email|max:255|unique:users,email,'.$employee->id,
             'role' => 'required|in:admin,manager,employee',
             'department_id' => 'nullable|exists:departments,id',
             'position' => 'nullable|string|max:255',
@@ -146,7 +177,7 @@ class EmployeeController extends Controller
             'phone' => $validated['phone'] ?? null,
         ];
 
-        if (!empty($validated['password'])) {
+        if (! empty($validated['password'])) {
             $data['password'] = Hash::make($validated['password']);
         }
 
@@ -163,12 +194,12 @@ class EmployeeController extends Controller
 
     public function toggleActive(User $employee)
     {
-        $employee->update(['is_active' => !$employee->is_active]);
+        $employee->update(['is_active' => ! $employee->is_active]);
 
         activity()
             ->performedOn($employee)
             ->causedBy(auth()->user())
-            ->log(($employee->is_active ? 'activated' : 'deactivated') . " user '{$employee->name}'");
+            ->log(($employee->is_active ? 'activated' : 'deactivated')." user '{$employee->name}'");
 
         return back()->with('success', 'Employee status updated successfully.');
     }

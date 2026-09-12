@@ -4,39 +4,56 @@ namespace App\Http\Controllers\Manager;
 
 use App\Enums\TaskPriority;
 use App\Enums\TaskStatus;
+use App\Http\Controllers\Concerns\InteractsWithTaskNotifications;
 use App\Http\Controllers\Controller;
+use App\Models\Department;
 use App\Models\Task;
 use App\Models\User;
-use App\Models\UserNotification;
 use Illuminate\Http\Request;
+use Spatie\Activitylog\Models\Activity;
 
 class TeamTaskController extends Controller
 {
+    use InteractsWithTaskNotifications;
+
     public function scopeTasks()
     {
         $user = auth()->user();
 
-        return Task::with(['assignees'])
+        return Task::with(['assignees', 'reviewer'])
             ->where(function ($q) use ($user) {
                 $q->whereHas('assignees', function ($q2) use ($user) {
                     $q2->where('users.id', $user->id);
                     if ($user->department_id) {
                         $q2->orWhere('users.department_id', $user->department_id);
                     }
-                })->orWhere('created_by', $user->id);
+                })->orWhere('created_by', $user->id)
+                    ->when($user->department_id, fn ($q3) => $q3->orWhere('department_id', $user->department_id));
             });
     }
 
     public function index(Request $request)
     {
-        $tasks = $this->scopeTasks()
+        $base = $this->scopeTasks();
+
+        $stats = [
+            'total' => (clone $base)->count(),
+            'in_progress' => (clone $base)->where('status', TaskStatus::InProgress->value)->count(),
+            'completed' => (clone $base)->where('status', TaskStatus::Completed->value)->count(),
+            'overdue' => (clone $base)->overdue()->count(),
+        ];
+
+        $tasks = (clone $base)
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
             ->when($request->filled('priority'), fn ($q) => $q->where('priority', $request->priority))
             ->when($request->filled('assigned_to'), fn ($q) => $q->whereHas('assignees', fn ($q2) => $q2->where('users.id', $request->assigned_to)))
+            ->when($request->filled('reviewer_id'), fn ($q) => $q->where('reviewer_id', $request->reviewer_id))
+            ->when($request->filled('due_date'), fn ($q) => $q->whereDate('due_date', $request->due_date))
             ->when($request->filled('search'), function ($q) use ($request) {
                 $q->where(function ($q2) use ($request) {
                     $q2->where('title', 'like', "%{$request->search}%")
-                        ->orWhere('description', 'like', "%{$request->search}%");
+                        ->orWhere('description', 'like', "%{$request->search}%")
+                        ->orWhere('id', $request->search);
                 });
             })
             ->latest()
@@ -45,7 +62,7 @@ class TeamTaskController extends Controller
 
         $members = $this->getDepartmentMembers();
 
-        return view('manager.team-tasks.index', compact('tasks', 'members'));
+        return view('manager.team-tasks.index', compact('tasks', 'members', 'stats'));
     }
 
     public function board(Request $request)
@@ -79,48 +96,43 @@ class TeamTaskController extends Controller
 
     public function create()
     {
-        $members = $this->getDepartmentMembers();
+        $departments = Department::with(['users' => fn ($q) => $q->where('role', 'employee')->where('is_active', true)->orderBy('name')])
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+        $reviewers = User::where('role', 'employee')->where('is_active', true)->orderBy('name')->get(['id', 'name', 'department_id']);
 
-        return view('manager.team-tasks.create', compact('members'));
+        return view('manager.team-tasks.create', compact('departments', 'reviewers'));
     }
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'status' => 'required|in:' . implode(',', TaskStatus::values()),
-            'priority' => 'required|in:' . implode(',', TaskPriority::values()),
-            'due_date' => 'nullable|date',
-            'start_date' => 'nullable|date',
-            'assigned_to' => 'nullable|array',
-            'assigned_to.*' => 'exists:users,id',
-            'estimated_hours' => 'nullable|numeric|min:0',
-        ]);
+        $validated = $request->validate($this->rules($request));
 
         $task = Task::create([
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
+            'department_id' => $validated['department_id'] ?? null,
             'status' => $validated['status'],
             'priority' => $validated['priority'],
             'due_date' => $validated['due_date'] ?? null,
             'start_date' => $validated['start_date'] ?? null,
             'estimated_hours' => $validated['estimated_hours'] ?? null,
+            'reviewer_id' => $validated['reviewer_id'] ?? null,
             'created_by' => auth()->id(),
         ]);
 
         foreach (array_unique($validated['assigned_to'] ?? []) as $assigneeId) {
             $task->assignees()->attach($assigneeId, ['assigned_at' => now()]);
-            if ($assigneeId !== auth()->id()) {
-                UserNotification::create([
-                    'user_id' => $assigneeId,
-                    'type' => 'task_assignment',
-                    'title' => 'New task assigned to you',
-                    'message' => "Task '{$task->title}' has been assigned to you.",
-                    'data' => ['task_id' => $task->id],
-                ]);
-            }
+            $this->notifyAssignment($task, $assigneeId);
         }
+
+        if ($task->department_id === null) {
+            $task->update(['department_id' => auth()->user()->department_id ?? $task->assignees()->first()?->department_id]);
+        }
+
+        $this->notifyManagers($task, 'task_assignment', 'New task assigned to your team',
+            "New task {$task->code()} ({$task->title}) was created by {$request->user()->name} and assigned to your team.");
 
         activity()
             ->performedOn($task)
@@ -135,9 +147,27 @@ class TeamTaskController extends Controller
     {
         $this->authorizeTask($task);
 
-        $task->load(['assignees', 'creator', 'comments.user', 'attachments.user', 'labels', 'parent', 'subtasks']);
+        $task->load([
+            'assignees',
+            'creator',
+            'reviewer',
+            'reviews' => fn ($q) => $q->with('reviewer')->latest('review_number'),
+            'comments.user',
+            'attachments.user',
+            'submissionAttachment.user',
+            'labels',
+            'parent',
+            'subtasks',
+        ]);
 
-        return view('manager.team-tasks.show', compact('task'));
+        $reviewerCandidates = $this->getDepartmentMembers();
+        $activities = Activity::forSubject($task)
+            ->with('causer')
+            ->latest()
+            ->take(15)
+            ->get();
+
+        return view('manager.team-tasks.show', compact('task', 'reviewerCandidates', 'activities'));
     }
 
     public function edit(Task $task)
@@ -153,37 +183,34 @@ class TeamTaskController extends Controller
     {
         $this->authorizeTask($task);
 
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'status' => 'required|in:' . implode(',', TaskStatus::values()),
-            'priority' => 'required|in:' . implode(',', TaskPriority::values()),
-            'due_date' => 'nullable|date',
-            'start_date' => 'nullable|date',
-            'assigned_to' => 'nullable|array',
-            'assigned_to.*' => 'exists:users,id',
-            'estimated_hours' => 'nullable|numeric|min:0',
+        $validated = $request->validate($this->rules($request) + [
             'actual_hours' => 'nullable|numeric|min:0',
         ]);
 
         $oldAssigneeIds = $task->assignees()->pluck('users.id')->toArray();
 
-        $task->update($validated);
+        $task->update([
+            'title' => $validated['title'],
+            'description' => $validated['description'] ?? null,
+            'department_id' => $validated['department_id'] ?? null,
+            'status' => $validated['status'],
+            'priority' => $validated['priority'],
+            'due_date' => $validated['due_date'] ?? null,
+            'start_date' => $validated['start_date'] ?? null,
+            'estimated_hours' => $validated['estimated_hours'] ?? null,
+            'actual_hours' => $validated['actual_hours'] ?? null,
+            'reviewer_id' => $validated['reviewer_id'] ?? null,
+        ]);
 
         $newAssigneeIds = array_unique($validated['assigned_to'] ?? []);
         $task->assignees()->sync($newAssigneeIds);
 
         foreach (array_diff($newAssigneeIds, $oldAssigneeIds) as $newId) {
-            if ($newId !== auth()->id()) {
-                UserNotification::create([
-                    'user_id' => $newId,
-                    'type' => 'task_assignment',
-                    'title' => 'New task assigned to you',
-                    'message' => "Task '{$task->title}' has been assigned to you.",
-                    'data' => ['task_id' => $task->id],
-                ]);
-            }
+            $this->notifyAssignment($task, $newId);
         }
+
+        $this->notifyManagers($task, 'task_assignment', 'Team task updated',
+            "Task {$task->code()} was updated by {$request->user()->name}.");
 
         activity()
             ->performedOn($task)
@@ -199,7 +226,13 @@ class TeamTaskController extends Controller
         $this->authorizeTask($task);
 
         $validated = $request->validate([
-            'status' => 'required|in:' . implode(',', TaskStatus::values()),
+            'status' => 'required|in:'.implode(',', [
+                TaskStatus::New->value,
+                TaskStatus::InProgress->value,
+                TaskStatus::UnderReview->value,
+                TaskStatus::OnHold->value,
+                TaskStatus::Cancelled->value,
+            ]),
         ]);
 
         $old = $task->status;
@@ -259,5 +292,22 @@ class TeamTaskController extends Controller
             ->when($user->department_id, fn ($q) => $q->where('department_id', $user->department_id))
             ->orderBy('name')
             ->get(['id', 'name', 'email', 'department_id']);
+    }
+
+    private function rules(Request $request): array
+    {
+        return [
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'status' => 'required|in:'.implode(',', TaskStatus::values()),
+            'priority' => 'required|in:'.implode(',', TaskPriority::values()),
+            'department_id' => 'nullable|exists:departments,id',
+            'assigned_to' => 'nullable|array',
+            'assigned_to.*' => 'exists:users,id',
+            'reviewer_id' => ['nullable', 'exists:users,id', 'not_in:'.implode(',', $request->input('assigned_to', []))],
+            'due_date' => 'nullable|date',
+            'start_date' => 'nullable|date',
+            'estimated_hours' => 'nullable|numeric|min:0',
+        ];
     }
 }

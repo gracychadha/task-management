@@ -14,21 +14,22 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
 
-        $totalAssigned = Task::whereHas('assignees', fn ($q) => $q->where('users.id', $user->id))->count();
-        $completedTasks = Task::whereHas('assignees', fn ($q) => $q->where('users.id', $user->id))
-            ->where('status', TaskStatus::Done->value)
-            ->count();
-        $inProgressTasks = Task::whereHas('assignees', fn ($q) => $q->where('users.id', $user->id))
-            ->where('status', TaskStatus::InProgress->value)
-            ->count();
-        $overdueTasks = Task::whereHas('assignees', fn ($q) => $q->where('users.id', $user->id))->overdue()->count();
+        $assigned = Task::whereHas('assignees', fn ($q) => $q->where('users.id', $user->id));
+
+        $completedTasks = (clone $assigned)->where('status', TaskStatus::Completed->value)->count();
+        $inProgressTasks = (clone $assigned)->where('status', TaskStatus::InProgress->value)->count();
+        $newTasks = (clone $assigned)->where('status', TaskStatus::New->value)->count();
+        $underReviewTasks = (clone $assigned)->where('status', TaskStatus::UnderReview->value)->count();
+        $changesRequestedTasks = (clone $assigned)->where('status', TaskStatus::ChangesRequested->value)->count();
+        $overdueTasks = (clone $assigned)->overdue()->count();
+        $totalAssigned = (clone $assigned)->count();
 
         $completionRate = $totalAssigned > 0
             ? round(($completedTasks / $totalAssigned) * 100, 1)
             : 0;
 
         $tasksByStatus = [];
-        $statusCounts = Task::whereHas('assignees', fn ($q) => $q->where('users.id', $user->id))
+        $statusCounts = (clone $assigned)
             ->selectRaw('status, count(*) as total')
             ->groupBy('status')
             ->pluck('total', 'status');
@@ -37,23 +38,38 @@ class DashboardController extends Controller
             $tasksByStatus[$status->value] = $statusCounts[$status->value] ?? 0;
         }
 
-        $myTasks = Task::whereHas('assignees', fn ($q) => $q->where('users.id', $user->id))
-            ->where('status', '!=', TaskStatus::Done->value)
+        $priorityCounts = (clone $assigned)
+            ->selectRaw('priority, count(*) as total')
+            ->groupBy('priority')
+            ->pluck('total', 'priority')
+            ->toArray();
+
+        $myTasks = (clone $assigned)
+            ->where('status', '!=', TaskStatus::Completed->value)
             ->with(['assignees', 'creator'])
             ->orderBy('due_date', 'asc')
             ->limit(10)
             ->get();
 
-        $upcomingTasks = Task::whereHas('assignees', fn ($q) => $q->where('users.id', $user->id))
-            ->where('status', '!=', TaskStatus::Done->value)
+        $pendingReviewCount = Task::pendingReviewFor($user->id)->count();
+
+        $reviewTasks = Task::where('reviewer_id', $user->id)
+            ->with(['assignees', 'creator'])
+            ->where('status', '!=', TaskStatus::Completed->value)
+            ->orderBy('due_date', 'asc')
+            ->limit(10)
+            ->get();
+
+        $upcomingTasks = (clone $assigned)
+            ->where('status', '!=', TaskStatus::Completed->value)
             ->whereNotNull('due_date')
             ->whereBetween('due_date', [now(), now()->addDays(7)])
             ->with(['assignees'])
             ->orderBy('due_date')
             ->get();
 
-        $recentCompleted = Task::whereHas('assignees', fn ($q) => $q->where('users.id', $user->id))
-            ->where('status', TaskStatus::Done->value)
+        $recentCompleted = (clone $assigned)
+            ->where('status', TaskStatus::Completed->value)
             ->with(['assignees'])
             ->latest()
             ->limit(5)
@@ -66,9 +82,7 @@ class DashboardController extends Controller
         $taskTrend = [];
         for ($i = 13; $i >= 0; $i--) {
             $date = Carbon::today()->subDays($i);
-            $count = Task::whereHas('assignees', fn ($q) => $q->where('users.id', $user->id))
-                ->whereDate('created_at', $date)
-                ->count();
+            $count = (clone $assigned)->whereDate('created_at', $date)->count();
             $taskTrend[$date->format('M d')] = $count;
         }
 
@@ -76,10 +90,16 @@ class DashboardController extends Controller
             'totalAssigned',
             'completedTasks',
             'inProgressTasks',
+            'newTasks',
+            'underReviewTasks',
+            'changesRequestedTasks',
             'overdueTasks',
             'completionRate',
             'tasksByStatus',
+            'priorityCounts',
             'myTasks',
+            'reviewTasks',
+            'pendingReviewCount',
             'upcomingTasks',
             'recentCompleted',
             'unreadNotifications',

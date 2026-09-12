@@ -78,6 +78,16 @@
                             });
                         </script>
 
+                        <div>
+                            <x-input-label for="reviewer_id" value="Reviewer (optional)" />
+                            <select id="reviewer_id" name="reviewer_id" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 block w-full">
+                                <option value="">— None —</option>
+                                @foreach($members as $member)
+                                    <option value="{{ $member->id }}" {{ old('reviewer_id', $task->reviewer_id) == $member->id ? 'selected' : '' }}>{{ $member->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <x-input-label for="estimated_hours" value="Estimated Hours" />

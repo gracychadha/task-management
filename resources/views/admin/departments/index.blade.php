@@ -1,84 +1,190 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">Departments</h2>
-            <a href="{{ route('admin.departments.create') }}" class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">Add Department</a>
+        <div class="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-6">
+            <div class="flex items-center gap-4">
+                <div class="flex-shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center text-white shadow-md shadow-sky-500/20">
+                    <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                </div>
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-sky-600">Organization</p>
+                    <h2 class="text-2xl font-bold text-gray-900 leading-tight">Manage Departments</h2>
+                    <p class="text-sm text-gray-500 mt-0.5">{{ $stats['total'] }} departments registered</p>
+                </div>
+            </div>
+            <div class="flex flex-col sm:flex-row sm:items-center gap-3 w-full xl:w-auto">
+                <div class="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200">
+                    <div class="w-9 h-9 rounded-lg bg-sky-500/10 flex items-center justify-center flex-shrink-0">
+                        <svg class="w-5 h-5 text-sky-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold text-gray-900 leading-tight">{{ now()->format('l, F j, Y') }}</p>
+                        <p class="text-xs text-gray-500 tabular-nums">{{ now()->format('g:i:s A') }}</p>
+                    </div>
+                </div>
+                <a href="{{ route('admin.departments.create') }}" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-sky-600 to-blue-600 text-sm font-medium text-white shadow-md shadow-sky-500/25 hover:shadow-lg hover:-translate-y-0.5 transition">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    Add Department
+                </a>
+            </div>
         </div>
     </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 mb-6">
+    <div class="py-8">
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+
+            <!-- Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-sky-500 to-blue-600 p-6 text-white shadow-lg shadow-sky-500/20">
+                    <div class="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-white/10"></div>
+                    <div class="relative flex items-start justify-between">
+                        <div>
+                            <div class="text-sm font-medium text-sky-100">Total Departments</div>
+                            <div class="mt-2 text-3xl font-extrabold">{{ $stats['total'] }}</div>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center">
+                            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path></svg>
+                        </div>
+                    </div>
+                </div>
+                <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 p-6 text-white shadow-lg shadow-emerald-500/20">
+                    <div class="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-white/10"></div>
+                    <div class="relative flex items-start justify-between">
+                        <div>
+                            <div class="text-sm font-medium text-emerald-100">Active</div>
+                            <div class="mt-2 text-3xl font-extrabold">{{ $stats['active'] }}</div>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center">
+                            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                        </div>
+                    </div>
+                </div>
+                <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-rose-500 to-red-600 p-6 text-white shadow-lg shadow-rose-500/20">
+                    <div class="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-white/10"></div>
+                    <div class="relative flex items-start justify-between">
+                        <div>
+                            <div class="text-sm font-medium text-rose-100">Inactive</div>
+                            <div class="mt-2 text-3xl font-extrabold">{{ $stats['inactive'] }}</div>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center">
+                            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
+                        </div>
+                    </div>
+                </div>
+                <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 p-6 text-white shadow-lg shadow-indigo-500/20">
+                    <div class="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-white/10"></div>
+                    <div class="relative flex items-start justify-between">
+                        <div>
+                            <div class="text-sm font-medium text-indigo-100">Total Members</div>
+                            <div class="mt-2 text-3xl font-extrabold">{{ $stats['total_members'] }}</div>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center">
+                            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 00-3-3.87"></path><path d="M16 3.13a4 4 0 010 7.75"></path></svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
                 <form method="GET" class="flex flex-wrap gap-4 items-end">
                     <div class="flex-1 min-w-[200px]">
-                        <x-input-label value="Search" />
-                        <x-text-input name="search" value="{{ request('search') }}" class="mt-1 block w-full" placeholder="Search departments..." />
+                        <label class="text-xs font-semibold text-gray-600 uppercase tracking-wider">Search</label>
+                        <div class="relative mt-1.5">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg class="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            </div>
+                            <input name="search" value="{{ request('search') }}" placeholder="Department name or description..." class="block w-full pl-10 pr-4 py-2.5 rounded-xl border-gray-300 focus:border-sky-500 focus:ring-sky-500 shadow-sm text-sm" />
+                        </div>
                     </div>
                     <div class="min-w-[150px]">
-                        <x-input-label value="Status" />
-                        <select name="status" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 block w-full">
+                        <label class="text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</label>
+                        <select name="status" class="mt-1.5 block w-full rounded-xl border-gray-300 focus:border-sky-500 focus:ring-sky-500 shadow-sm text-sm py-2.5">
                             <option value="">All</option>
                             <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>Active</option>
                             <option value="inactive" {{ request('status') === 'inactive' ? 'selected' : '' }}>Inactive</option>
                         </select>
                     </div>
-                    <x-primary-button type="submit">Filter</x-primary-button>
+                    <button type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-600 to-blue-600 text-sm font-medium text-white shadow-md shadow-sky-500/25 hover:shadow-lg hover:-translate-y-0.5 transition">
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+                        Filter
+                    </button>
                 </form>
             </div>
 
+            <!-- Department Grid -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 @forelse($departments as $department)
-                    <div class="bg-white shadow-sm sm:rounded-lg p-6 relative">
-                        <div class="flex items-start justify-between mb-4">
-                            <div>
-                                <a href="{{ route('admin.departments.show', $department) }}" class="text-lg font-medium text-gray-900 hover:text-indigo-600">{{ $department->name }}</a>
-                                @if($department->description)
-                                    <p class="text-sm text-gray-500 mt-1">{{ Str::limit($department->description, 80) }}</p>
-                                @endif
-                            </div>
-                            @if($department->is_active)
-                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Active</span>
-                            @else
-                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">Inactive</span>
-                            @endif
-                        </div>
-                        <div class="flex items-center justify-between text-sm">
-                            <span class="text-gray-500">
-                                <span class="font-medium text-gray-900">{{ $department->users_count }}</span> members
-                            </span>
-                            <div x-data="{ open: false }" class="relative">
-                                <button @click="open = !open" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-                                    Manage
-                                    <svg class="ml-1.5 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
-                                </button>
-                                <div x-show="open" @click.away="open = false" x-transition class="absolute right-0 mt-2 w-44 bg-white border border-gray-200 rounded-lg shadow-xl z-50 overflow-visible">
-                                    <a href="{{ route('admin.departments.show', $department) }}" class="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100">
-                                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                                        View
-                                    </a>
-                                    <a href="{{ route('admin.departments.edit', $department) }}" class="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100">
-                                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                                        Edit
-                                    </a>
-                                    <hr class="border-gray-100">
-                                    <form method="POST" action="{{ route('admin.departments.destroy', $department) }}" onsubmit="return confirm('Delete this department? Members will be unassigned.')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                            Delete
-                                        </button>
-                                    </form>
+                    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200">
+                        <div class="h-1.5 bg-gradient-to-r from-sky-500 to-blue-600"></div>
+                        <div class="p-6">
+                            <div class="flex items-start justify-between mb-4">
+                                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center text-white shadow-sm">
+                                    <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path></svg>
                                 </div>
+                                <div x-data="{ open: false }" class="relative">
+                                    <button @click="open = !open" class="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition">
+                                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
+                                    </button>
+                                    <div x-show="open" @click.away="open = false" x-transition class="absolute right-0 mt-1 w-44 bg-white border border-gray-200 rounded-xl shadow-xl z-50 py-1">
+                                        <a href="{{ route('admin.departments.show', $department) }}" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition">
+                                            <svg class="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                            View
+                                        </a>
+                                        <a href="{{ route('admin.departments.edit', $department) }}" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition">
+                                            <svg class="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                            Edit
+                                        </a>
+                                        <hr class="my-1 border-gray-100">
+                                        <form method="POST" action="{{ route('admin.departments.destroy', $department) }}" onsubmit="return confirm('Delete this department?')">
+                                            @csrf @method('DELETE')
+                                            <button type="submit" class="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition">
+                                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path></svg>
+                                                Delete
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <a href="{{ route('admin.departments.show', $department) }}" class="block mb-2">
+                                <h3 class="text-lg font-bold text-gray-900 hover:text-sky-600 transition">{{ $department->name }}</h3>
+                            </a>
+                            @if($department->description)
+                                <p class="text-sm text-gray-500 mb-4 line-clamp-2">{{ Str::limit($department->description, 120) }}</p>
+                            @else
+                                <p class="text-sm text-gray-400 italic mb-4">No description</p>
+                            @endif
+
+                            <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+                                <div class="flex items-center gap-1.5 text-xs text-gray-600">
+                                    <svg class="w-3.5 h-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 00-3-3.87"></path><path d="M16 3.13a4 4 0 010 7.75"></path></svg>
+                                    {{ $department->users_count }} {{ Str::plural('member', $department->users_count) }}
+                                </div>
+                                @if($department->is_active)
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                        Active
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                                        Inactive
+                                    </span>
+                                @endif
                             </div>
                         </div>
                     </div>
                 @empty
-                    <div class="col-span-full text-center py-12 text-gray-500">No departments found.</div>
+                    <div class="col-span-full text-center py-16">
+                        <div class="w-16 h-16 mx-auto rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+                            <svg class="w-8 h-8 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path></svg>
+                        </div>
+                        <p class="text-sm text-gray-500">No departments found.</p>
+                    </div>
                 @endforelse
             </div>
 
-            <div class="mt-6">{{ $departments->links() }}</div>
+            <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">{{ $departments->links() }}</div>
         </div>
     </div>
 </x-app-layout>

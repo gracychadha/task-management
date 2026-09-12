@@ -7,8 +7,8 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -46,6 +46,16 @@ class User extends Authenticatable
         return $this->hasMany(Task::class, 'created_by');
     }
 
+    public function tasksReviewed(): HasMany
+    {
+        return $this->hasMany(Task::class, 'reviewer_id');
+    }
+
+    public function tasksPendingReview(): HasMany
+    {
+        return $this->tasksReviewed()->where('status', 'under_review');
+    }
+
     public function comments(): HasMany
     {
         return $this->hasMany(TaskComment::class);
@@ -71,6 +81,11 @@ class User extends Authenticatable
         return $this->role === UserRole::Employee->value;
     }
 
+    public function isReviewerFor(Task $task): bool
+    {
+        return $task->reviewer_id === $this->id;
+    }
+
     public function getRoleBadgeColor(): string
     {
         return match ($this->role) {
@@ -87,6 +102,7 @@ class User extends Authenticatable
         foreach (array_slice($parts, 0, 2) as $part) {
             $initials .= strtoupper(mb_substr($part, 0, 1));
         }
+
         return $initials ?: 'U';
     }
 }

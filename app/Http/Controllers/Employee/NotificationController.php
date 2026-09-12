@@ -9,11 +9,14 @@ class NotificationController extends Controller
 {
     public function index()
     {
-        $notifications = UserNotification::where('user_id', auth()->id())
-            ->latest()
-            ->paginate(20);
+        $query = UserNotification::where('user_id', auth()->id());
 
-        return view('employee.notifications.index', compact('notifications'));
+        $total = $query->count();
+        $unread = (clone $query)->unread()->count();
+
+        $notifications = $query->latest()->paginate(20);
+
+        return view('employee.notifications.index', compact('notifications', 'total', 'unread'));
     }
 
     public function markAsRead(UserNotification $notification)

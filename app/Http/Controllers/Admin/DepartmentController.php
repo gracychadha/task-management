@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Department;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class DepartmentController extends Controller
@@ -26,7 +27,26 @@ class DepartmentController extends Controller
 
         $departments = $query->latest()->paginate(12)->withQueryString();
 
-        return view('admin.departments.index', compact('departments'));
+        $statsQuery = Department::query();
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $statsQuery->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+        if ($request->filled('status')) {
+            $statsQuery->where('is_active', $request->status === 'active');
+        }
+
+        $stats = [
+            'total' => (clone $statsQuery)->count(),
+            'active' => (clone $statsQuery)->where('is_active', true)->count(),
+            'inactive' => (clone $statsQuery)->where('is_active', false)->count(),
+            'total_members' => User::where('role', '!=', 'admin')->count(),
+        ];
+
+        return view('admin.departments.index', compact('departments', 'stats'));
     }
 
     public function create()
@@ -77,7 +97,7 @@ class DepartmentController extends Controller
     public function update(Request $request, Department $department)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:departments,name,' . $department->id,
+            'name' => 'required|string|max:255|unique:departments,name,'.$department->id,
             'description' => 'nullable|string|max:1000',
             'is_active' => 'boolean',
         ]);

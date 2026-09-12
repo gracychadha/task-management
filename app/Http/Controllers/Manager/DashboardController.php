@@ -13,25 +13,29 @@ class DashboardController extends Controller
     public function index()
     {
         $user = auth()->user();
-        $departmentId = $user->department_id;
 
-        $taskQuery = Task::whereHas('assignees', function ($q) use ($departmentId) {
-            if ($departmentId) {
-                $q->where('users.department_id', $departmentId);
-            } else {
-                $q->where('users.id', $user->id);
-            }
-        });
+        $scope = Task::query()
+            ->where(function ($q) use ($user) {
+                $q->whereHas('assignees', function ($q2) use ($user) {
+                    $q2->where('users.id', $user->id);
+                    if ($user->department_id) {
+                        $q2->orWhere('users.department_id', $user->department_id);
+                    }
+                })->orWhere('created_by', $user->id)
+                    ->when($user->department_id, fn ($q3) => $q3->orWhere('department_id', $user->department_id));
+            });
 
-        $totalTasks = (clone $taskQuery)->count();
-        $completedTasks = (clone $taskQuery)->where('status', TaskStatus::Done->value)->count();
-        $inProgressTasks = (clone $taskQuery)->where('status', TaskStatus::InProgress->value)->count();
-        $overdueTasks = (clone $taskQuery)->overdue()->count();
+        $totalTasks = (clone $scope)->count();
+        $newTasks = (clone $scope)->where('status', TaskStatus::New->value)->count();
+        $inProgressTasks = (clone $scope)->where('status', TaskStatus::InProgress->value)->count();
+        $underReviewTasks = (clone $scope)->where('status', TaskStatus::UnderReview->value)->count();
+        $changesRequestedTasks = (clone $scope)->where('status', TaskStatus::ChangesRequested->value)->count();
+        $completedTasks = (clone $scope)->where('status', TaskStatus::Completed->value)->count();
+        $overdueTasks = (clone $scope)->overdue()->count();
 
         $completionRate = $totalTasks > 0 ? round(($completedTasks / $totalTasks) * 100, 1) : 0;
 
-        // Tasks by status
-        $statusCounts = (clone $taskQuery)
+        $statusCounts = (clone $scope)
             ->selectRaw('status, count(*) as total')
             ->groupBy('status')
             ->pluck('total', 'status');
@@ -41,79 +45,85 @@ class DashboardController extends Controller
             $statusData[$status->value] = $statusCounts[$status->value] ?? 0;
         }
 
-        // Department members performance
-        $members = User::where('department_id', $departmentId)
+        $priorityCounts = (clone $scope)
+            ->selectRaw('priority, count(*) as total')
+            ->groupBy('priority')
+            ->pluck('total', 'priority')
+            ->toArray();
+
+        $members = User::where('role', 'employee')
+            ->where('department_id', $user->department_id)
             ->where('id', '!=', $user->id)
             ->get();
 
-        $memberPerformance = $members->map(function ($member) {
-            $memberTasks = Task::whereHas('assignees', fn ($q) => $q->where('users.id', $member->id));
-            $total = (clone $memberTasks)->count();
-            $completed = (clone $memberTasks)->where('status', TaskStatus::Done->value)->count();
-            return [
-                'name' => $member->name,
-                'avatar' => $member->avatar,
-                'total' => $total,
-                'completed' => $completed,
-                'rate' => $total > 0 ? round(($completed / $total) * 100, 1) : 0,
-            ];
-        })->sortByDesc('rate')->values();
+        $memberPerformance = $members->isNotEmpty()
+            ? $members->map(function ($member) {
+                $memberTasks = Task::assignedTo($member->id);
+                $total = (clone $memberTasks)->count();
+                $completed = (clone $memberTasks)->where('status', TaskStatus::Completed->value)->count();
 
-        // Recent assignments in my department
-        $recentTasks = Task::with(['assignees'])
-            ->whereHas('assignees', function ($q) use ($departmentId, $user) {
-                if ($departmentId) {
-                    $q->where('users.department_id', $departmentId);
-                } else {
-                    $q->where('users.id', $user->id);
-                }
-            })
+                return [
+                    'name' => $member->name,
+                    'avatar' => $member->avatar,
+                    'total' => $total,
+                    'completed' => $completed,
+                    'rate' => $total > 0 ? round(($completed / $total) * 100, 1) : 0,
+                ];
+            })->sortByDesc('rate')->values()
+            : collect();
+
+        $recentTasks = (clone $scope)
+            ->with(['assignees'])
             ->latest()
             ->limit(8)
             ->get();
 
-        // Upcoming deadlines (next 7 days)
-        $upcomingTasks = Task::with(['assignees'])
-            ->whereHas('assignees', function ($q) use ($departmentId, $user) {
-                if ($departmentId) {
-                    $q->where('users.department_id', $departmentId);
-                } else {
-                    $q->where('users.id', $user->id);
-                }
-            })
-            ->where('status', '!=', TaskStatus::Done->value)
+        $upcomingTasks = (clone $scope)
+            ->with(['assignees'])
+            ->where('status', '!=', TaskStatus::Completed->value)
             ->whereNotNull('due_date')
             ->whereBetween('due_date', [now(), now()->addDays(7)])
             ->orderBy('due_date')
             ->get();
 
-        // Tasks per day for trend chart
+        $awaitingReviewTasks = (clone $scope)
+            ->with(['assignees', 'reviewer'])
+            ->where('status', TaskStatus::UnderReview->value)
+            ->latest()
+            ->limit(10)
+            ->get();
+
+        $attentionTasks = (clone $scope)
+            ->with(['assignees', 'reviewer'])
+            ->where('status', TaskStatus::ChangesRequested->value)
+            ->latest()
+            ->limit(10)
+            ->get();
+
         $taskTrend = [];
         for ($i = 13; $i >= 0; $i--) {
             $date = Carbon::today()->subDays($i);
-            $count = Task::whereHas('assignees', function ($q) use ($departmentId, $user) {
-                if ($departmentId) {
-                    $q->where('users.department_id', $departmentId);
-                } else {
-                    $q->where('users.id', $user->id);
-                }
-            })
-                ->whereDate('created_at', $date)
-                ->count();
+            $count = (clone $scope)->whereDate('created_at', $date)->count();
             $taskTrend[$date->format('M d')] = $count;
         }
 
         return view('manager.dashboard', compact(
             'totalTasks',
-            'completedTasks',
+            'newTasks',
             'inProgressTasks',
+            'underReviewTasks',
+            'changesRequestedTasks',
+            'completedTasks',
             'overdueTasks',
             'completionRate',
             'statusData',
+            'priorityCounts',
             'memberPerformance',
             'recentTasks',
             'upcomingTasks',
-            'taskTrend'
+            'taskTrend',
+            'awaitingReviewTasks',
+            'attentionTasks'
         ));
     }
 }

@@ -14,13 +14,14 @@
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5 gap-4">
                 @php
                     $statuses = [
-                        'todo' => ['label' => 'To Do', 'color' => 'gray'],
+                        'new' => ['label' => 'New', 'color' => 'gray'],
                         'in_progress' => ['label' => 'In Progress', 'color' => 'blue'],
-                        'review' => ['label' => 'Review', 'color' => 'yellow'],
-                        'done' => ['label' => 'Done', 'color' => 'green'],
+                        'under_review' => ['label' => 'Under Review', 'color' => 'yellow'],
+                        'changes_requested' => ['label' => 'Changes Requested', 'color' => 'red'],
+                        'on_hold' => ['label' => 'On Hold', 'color' => 'purple'],
                     ];
                 @endphp
                 @foreach($statuses as $statusKey => $statusInfo)
