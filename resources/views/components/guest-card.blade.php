@@ -4,7 +4,7 @@
     <div class="mb-6">
         <div class="flex items-center justify-center mb-3">
             <img
-                src="{{ asset('image/tmc.png') }}"
+                src="{{ asset('image/final-logo.png') }}"
                 alt="Task Management System"
                 class="w-20 h-auto rounded-2xl bg-white p-2 shadow-lg shadow-slate-200"
             />

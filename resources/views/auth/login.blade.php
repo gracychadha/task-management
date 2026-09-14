@@ -39,7 +39,7 @@
                                 flex items-center justify-center">
 
                                 <img
-                                    src="{{ asset('image/tmc.png') }}"
+                                    src="{{ asset('image/final-logo.png') }}"
                                     alt="Task Management System"
                                     class="w-14 h-14 object-contain" />
 

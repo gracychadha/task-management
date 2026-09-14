@@ -21,7 +21,7 @@
                 <!-- Logo -->
                 <div class="shrink-0 flex items-center">
                     <a href="{{ route('dashboard') }}" class="flex items-center gap-2.5">
-                        <img src="{{ asset('image/tmc.png') }}" alt="Task Management" class="block h-9 w-auto" />
+                        <img src="{{ asset('image/final-logo.png') }}" alt="Task Management" class="block h-9 w-auto" />
                         <span class="hidden sm:block text-lg font-bold tracking-tight text-gray-900">Task<span class="text-indigo-600">Management</span></span>
                     </a>
                 </div>
