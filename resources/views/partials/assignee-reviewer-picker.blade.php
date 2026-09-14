@@ -156,7 +156,7 @@
                         <div x-show="!departmentId || departmentId == {{ $dept['id'] }}">
                             <div class="px-3 py-1.5 mt-1 text-[11px] font-bold uppercase tracking-wide text-gray-400">{{ $dept['name'] }}</div>
                             @forelse($dept['users'] as $u)
-                                <label x-show="assigneeMatches(@json($u['name']))" data-department="{{ $dept['id'] }}" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-indigo-50/60 cursor-pointer transition">
+                                <label x-show="assigneeMatches({{ json_encode($u['name']) }})" data-department="{{ $dept['id'] }}" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-indigo-50/60 cursor-pointer transition">
                                     <input type="checkbox" :checked="assigneeIds.includes({{ $u['id'] }})" @change="toggleAssignee({{ $u['id'] }})" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
                                     <span class="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white text-[10px] font-bold flex items-center justify-center shrink-0">{{ $u['initials'] }}</span>
                                     <span class="text-sm font-medium text-gray-700">{{ $u['name'] }}</span>
@@ -228,7 +228,7 @@
                         <div x-show="!reviewerDepartmentId || reviewerDepartmentId == {{ $deptKey === 'unassigned' ? 'null' : $deptKey }}"
                              class="px-3 py-1.5 mt-1 text-[11px] font-bold uppercase tracking-wide text-emerald-700/80">{{ $deptName }}</div>
                         @foreach($group as $r)
-                            <label x-show="(!reviewerDepartmentId || reviewerDepartmentId == {{ $r['department_id'] ?? 'null' }}) && !assigneeIds.includes({{ $r['id'] }}) && reviewerMatches(@json($r['name']))"
+                            <label x-show="(!reviewerDepartmentId || reviewerDepartmentId == {{ $r['department_id'] ?? 'null' }}) && !assigneeIds.includes({{ $r['id'] }}) && reviewerMatches({{ json_encode($r['name']) }})"
                                    data-department="{{ $r['department_id'] ?? '' }}"
                                    class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-emerald-50/60 cursor-pointer transition">
                                 <input type="radio" :checked="reviewerId === {{ $r['id'] }}" @change="reviewerId = {{ $r['id'] }}" name="reviewer_picker" class="border-gray-300 text-emerald-600 focus:ring-emerald-500">

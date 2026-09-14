@@ -211,6 +211,21 @@ class TaskAssignmentTest extends TestCase
         $response->assertSee("data-department=\"{$dept->id}\"", false);
     }
 
+    public function test_manager_create_page_hides_reviewers_who_are_selected_assignees(): void
+    {
+        $dept = Department::create(['name' => 'HR']);
+        $manager = User::factory()->manager()->create(['email_verified_at' => now(), 'department_id' => $dept->id]);
+        $employee = User::factory()->employee()->create(['email_verified_at' => now(), 'department_id' => $dept->id]);
+
+        $response = $this->actingAs($manager)->get(route('manager.team-tasks.create'));
+
+        $response->assertOk();
+        $response->assertSee('Employees selected as assignees are hidden');
+        $response->assertSee('!assigneeIds.includes('.$employee->id, false);
+        $response->assertSee('reviewerMatches(&quot;', false);
+        $response->assertDontSee('reviewerMatches("'.$employee->name, false);
+    }
+
     public function test_manager_dashboard_includes_tasks_for_their_department(): void
     {
         $dept = Department::create(['name' => 'HR']);
